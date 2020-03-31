@@ -7,17 +7,7 @@ pool:
 steps:
 - task: RunMATLABTests@0
   inputs:
-    testResultsJUnit: 'matlab-artifacts/results.xml'
+    testResultsJUnit: 'matlab-artifacts/result.xml'
     codeCoverageCobertura: 'matlab-artifacts/coverage.xml'
     sourceFolder: 'source'
 
-- task: PublishTestResults@2
-  condition: succeededOrFailed()
-  inputs:
-    testResultsFiles: matlab-artifacts/results.xml
-
-- task: PublishCodeCoverageResults@1
-  inputs:
-      codeCoverageTool: Cobertura
-      summaryFileLocation: matlab-artifacts/coverage.xml
-      reportDirectory: matlab-artifacts
