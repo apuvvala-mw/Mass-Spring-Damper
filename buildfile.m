@@ -170,9 +170,10 @@ derivedFiles = [...
     "toolbox/springMassDamperDesign.p"
     "toolbox/convec." + mexext
     "toolbox/sub/convec2." + mexext
-    "toolbox/sub2/simulateSysem.m"
-    "toolbox/sub2/simulateSysem.p"
+    "toolbox/subp/simulateSystem2.m"
+    "toolbox/subp/simulateSystem2.p"
     "toolbox/doc/GettingStarted.html"
+    "release/Mass-Spring-Damper.mltbx"
     ];
 
 arrayfun(@deleteFile, derivedFiles);
