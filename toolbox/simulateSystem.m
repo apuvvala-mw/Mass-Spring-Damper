@@ -18,3 +18,4 @@ odefun = @(t,z) [0 1; -k/m -c/m]*z;
 
 % The first column is the position (displacement from equilibrium)
 x = z(:, 1);
+

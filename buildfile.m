@@ -7,25 +7,28 @@ plan("mex").Outputs = files(plan, "toolbox/**/*." + mexext);
 
 plan("pcode").Inputs = files(plan, "pcode/**/*.m");
 plan("pcode").Outputs = files(plan, "toolbox/**/*.p");
-
+plan("pcode").Dependencies = "pcodeHelp";
 plan("pcodeHelp").Inputs = plan("pcode").Inputs;
 %plan("pcodeHelp").Outputs = files(plan, "toolbox/**/*.m"]); % how to do this?
 
-plan("lint").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m"]);
-
+plan("lint").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m"]); % Want to use this for finding files to operate on but dont want incremental
 
 plan("test").Dependencies = ["mex", "pcode"];
+plan("test").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m", "tests"]);
 
 plan("toolbox").Dependencies = ["lint", "test", "doc", "pcodeHelp"];
-plan("toolbox").Inputs = files(plan, "toolbox");
+plan("toolbox").Inputs = files(plan, ["pcode", "mex", "toolbox"]);
 plan("toolbox").Outputs = files(plan, "release/*.mltbx");
 
 plan("doc").Dependencies = "docTest";
 plan("doc").Inputs = files(plan, "toolbox/doc/**/*.mlx");
 plan("doc").Outputs = files(plan, "toolbox/doc/**/*.html");
 
+plan("docTest").Inputs = files(plan, ["toolbox/doc/**/*.mlx" "test/doc/**/*.m"]);
+
 plan("install").Dependencies = "integTest";
 plan("integTest").Dependencies = "toolbox";
+plan("integTest").Inputs = files(plan, ["toolbox", "tests"]);
 
 plan("lintAll") = matlab.buildtool.Task("Description","Find code issues in source and tests");
 plan("lintAll").Dependencies = ["lint", "lintTests"];
@@ -34,37 +37,40 @@ plan.DefaultTasks = "integTest";
 end
 
 
-function lintTask(~)
-% Find static code issues
+function lintTask(context)
+% Find static codeIssues
+lintFcn(fileparts(context.Inputs.paths));
 
-issues = codeIssues(["toolbox", "pcode"]);
-if ~isempty(issues.Issues)
-    disp(formattedDisplayText(issues.Issues,"SuppressMarkup",feature("hotlinks")));
-    disp("Detected code issues in source")
 end
-if ~isempty(issues.SuppressedIssues)
-    disp(formattedDisplayText(issues.SuppressedIssues,"SuppressMarkup",feature("hotlinks")));
-    disp("Detected suppressed issues in source")
-end
-end
+
 
 function mexTask(context)
 % Compile mex files
 
-outputPaths = replace(context.Inputs.paths,textBoundary + wildcardPattern + filesep, "toolbox" + filesep);
 
-for idx = 1:numel(context.Inputs.paths)
-    thisFile = context.Inputs.paths{idx};
-    disp("Building " + thisFile);
-    mex(thisFile,"-outdir", fileparts(outputPaths(idx)));
+[srcFolders, srcFiles, srcExt] = fileparts(context.Inputs.paths);
+outFolders = fullfile("toolbox", reverse(fileparts(reverse(srcFolders))));
+
+
+for idx = 1:numel(srcFiles)
+    thisInput = fullfile(srcFolders(idx), srcFiles(idx) + srcExt(idx));
+    thisOutput = fullfile(outFolders(idx), srcFiles(idx) + "." + mexext);
+
+    makeFolder(fileparts(thisOutput));
+
+    disp("Building " + thisInput);
+
+    mex(thisInput,"-output", thisOutput);
+    registerForClean(thisOutput);
+    disp(" ")
 end
 end
 
-function docTask(~, options)
+function docTask(context, options)
 % Generate the doc pages
 
 arguments
-    ~
+    context
     options.Env (1,:) string = "standard"
 end
 
@@ -75,7 +81,13 @@ if options.Env == "ci"
     disp("Done");
 end
 
-export("toolbox/doc/GettingStarted.mlx","toolbox/doc/GettingStarted.html");
+docFiles = context.Inputs.paths;
+for idx = 1:numel(docFiles)
+    [thisPath, thisFile] = fileparts(docFiles(idx));
+    exportedFile = fullfile(thisPath, thisFile + ".html");
+    export(docFiles(idx), exportedFile);
+    registerForClean(exportedFile);
+end
 end
 
 function docTestTask(~)
@@ -96,22 +108,14 @@ end
 
 function lintTestsTask(~)
 % Find code issues in test code
-
-issues = codeIssues("tests");
-if ~isempty(issues.Issues)
-    disp(formattedDisplayText(issues.Issues,"SuppressMarkup",feature("hotlinks")));
-    disp("Detected code issues in tests")
-end
-if ~isempty(issues.SuppressedIssues)
-    disp(formattedDisplayText(issues.SuppressedIssues,"SuppressMarkup",feature("hotlinks")));
-    disp("Detected suppressed issues in tests")
-end
+lintFcn("tests");
 end
 
 function toolboxTask(~)
 % Create an mltbx toolbox package
 
 matlab.addons.toolbox.packageToolbox("Mass-Spring-Damper.prj","release/Mass-Spring-Damper.mltbx");
+registerForClean("release/Mass-Spring-Damper.mltbx");
 
 end
 
@@ -134,9 +138,13 @@ for idx = 1:numel(context.Inputs.paths)
         helpText = replaceBetween(helpText, 1, 1, "%"); % Add comment symbols
 
         % Write the file
+        folder = fileparts(outputPaths(idx));
+        makeFolder(folder);
+
         fid = fopen(outputPaths(idx),"w");
         closer = onCleanup(@() fclose(fid));
         fprintf(fid, "%s\n", helpText);
+        registerForClean(outputPaths(idx));
     end
 end
 end
@@ -146,37 +154,89 @@ function pcodeTask(context)
 
 startDir = pwd;
 cleaner = onCleanup(@() cd(startDir));
-inputFolders = unique(fileparts(context.Inputs.paths));
-outputFolders = "toolbox" + filesep + reverse(fileparts(reverse(inputFolders)));
 
-for idx = 1:numel(inputFolders)
-    disp("P-coding files in " + inputFolders(idx));
+[srcFolders, srcFiles] = fileparts(context.Inputs.paths);
+outFolders = fullfile("toolbox", reverse(fileparts(reverse(srcFolders))));
+outFiles = fullfile(outFolders, srcFiles + ".p");
+
+for idx = 1:numel(unique(srcFolders))
+    disp("P-coding files in " + srcFolders(idx));
     % Now pcode the file
-    thisOutputFolder = fullfile(context.Plan.RootFolder, outputFolders(idx));
-    thisInputFolder = fullfile(context.Plan.RootFolder,inputFolders(idx));
-    if ~exist(thisOutputFolder,"dir")
-        mkdir(thisOutputFolder);
-    end
-    cd(thisOutputFolder);
-    pcode(thisInputFolder);
+    thisOutFolder = fullfile(context.Plan.RootFolder, outFolders(idx));
+    thisSrcFolder = fullfile(context.Plan.RootFolder,srcFolders(idx));
+
+    makeFolder(thisOutFolder, BuildRoot=context.Plan.RootFolder);
+
+    cd(thisOutFolder);
+    pcode(thisSrcFolder);
+    pcodedFiles = outFiles(outFiles.startsWith(outFolders(idx)));
+    registerForClean(pcodedFiles, BuildRoot=context.Plan.RootFolder);
 end
+end
+
+function makeFolder(folder,options)
+arguments
+    folder
+    options.BuildRoot string = "";
+end
+if exist(folder,"dir")
+    return
+end
+
+createdFolder = folder;
+while(~exist(createdFolder,"dir") || isempty(createdFolder))
+    registerForClean(folder,Folder=true,BuildRoot=options.BuildRoot);
+    createdFolder = fileparts(createdFolder);
+end
+mkdir(folder);
 end
 
 function cleanTask(~)
 % Clean all derived artifacts
 
-derivedFiles = [...
-    "toolbox/springMassDamperDesign.m"
-    "toolbox/springMassDamperDesign.p"
-    "toolbox/convec." + mexext
-    "toolbox/sub/convec2." + mexext
-    "toolbox/subp/simulateSystem2.m"
-    "toolbox/subp/simulateSystem2.p"
-    "toolbox/doc/GettingStarted.html"
-    "release/Mass-Spring-Damper.mltbx"
-    ];
+if exist("derived/clean.mat","file")
+    cleanRecords = matfile("derived/clean.mat");
+else
+    cleanRecords.files = string.empty;
+    cleanRecords.folders = string.empty;
+    cleanRecords.Properties.Source = string.empty;
+end
 
-arrayfun(@deleteFile, derivedFiles);
+arrayfun(@deleteFile, cleanRecords.files);
+
+
+oldWarn = warning("off",'MATLAB:RMDIR:RemovedFromPath');
+cl = onCleanup(@() warning(oldWarn));
+arrayfun(@rmdir, cleanRecords.folders);
+clear cl;
+
+deleteFile(cleanRecords.Properties.Source);
+
+
+v = extract(string(version), textBoundary + digitsPattern + "." + digitsPattern + "." + digitsPattern + "." + digitsPattern);
+rmdir(fullfile(".buildtool",v), "s");
+end
+
+function registerForClean(files,options)
+arguments
+    files string;
+    options.BuildRoot (1,1) string = "";
+    options.Folder (1,1) logical = false;
+end
+
+cleanRecords = matfile(fullfile(options.BuildRoot, "derived/clean.mat"),"Writable",true);
+if ~exist(cleanRecords.Properties.Source,"file")
+    cleanRecords.files = string.empty(0,1);
+    cleanRecords.folders = string.empty(0,1);
+end
+
+files = files(:);
+if options.Folder
+    cleanRecords.folders = vertcat(cleanRecords.folders, files);
+else
+    cleanRecords.files = vertcat(cleanRecords.files, files);
+end
+
 end
 
 function integTestTask(~, options)
@@ -223,8 +283,25 @@ end
 
 
 function deleteFile(file)
-if exist(file,"file")
+if ~isempty(file) && exist(file,"file")
     delete(file);
 end
+end
+
+function lintFcn(paths)
+issues = codeIssues(paths);
+errorIdx = issues.Issues.Severity == "error";
+errors = issues.Issues(errorIdx,:);
+disp("Errors:")
+disp(formattedDisplayText(errors,"SuppressMarkup",feature("hotlinks")));
+assert(isempty(errors), "Found critical errors in code." );
+disp("Other Issues:")
+disp(formattedDisplayText(issues.Issues(~errorIdx,:),"SuppressMarkup",feature("hotlinks")));
+
+if ~isempty(issues.SuppressedIssues)
+    disp("Some issues were suppressed")
+    disp(formattedDisplayText(groupsummary(issues.SuppressedIssues,"Severity"),"SuppressMarkup",feature("hotlinks")));
+end
+
 end
 

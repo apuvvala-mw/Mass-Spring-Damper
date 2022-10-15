@@ -5,9 +5,9 @@ function design = springMassDamperDesign(mass)
 % how to use it.
 
 if nargin
-  m = mass;
+  m = mass; %#ok<NASGU>
 else
-  m = 1500; % Need to know the mass to determine critical damping
+  m = 1500; %#ok<NASGU> % Need to know the mass to determine critical damping
 end
 
 design.k = 5e6;                  % Spring Constant

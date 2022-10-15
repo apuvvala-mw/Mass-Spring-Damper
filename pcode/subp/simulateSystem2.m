@@ -5,6 +5,7 @@ if ~isstruct(design) || ~all(isfield(design,{'c','k'}))
         'The design should be a structure with fields "c" and "k"');
 end
 
+
 % Design variables
 c = design.c;
 k = design.k;
