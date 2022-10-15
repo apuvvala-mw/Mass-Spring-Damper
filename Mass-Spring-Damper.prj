@@ -116,15 +116,13 @@
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/System/Volumes/Data/mathworks/devel/sbs/15/Bmain_ci.j2081372.sb/matlab</root>
+      <root>/System/Volumes/Data/mathworks/devel/jobarchive/Btestframework/.zfs/snapshot/Btestframework.2093544.pass.ja1/current/build/matlab</root>
       <toolboxes>
         <toolbox name="matlabcoder" />
         <toolbox name="embeddedcoder" />
-        <toolbox name="gpucoder" />
         <toolbox name="fixedpoint" />
         <toolbox name="matlabhdlcoder" />
         <toolbox name="neuralnetwork" />
-        <toolbox name="polyspacebugfinder" />
       </toolboxes>
       <toolbox>
         <matlabcoder>
@@ -135,11 +133,6 @@
         <embeddedcoder>
           <enabled>true</enabled>
         </embeddedcoder>
-      </toolbox>
-      <toolbox>
-        <gpucoder>
-          <enabled>true</enabled>
-        </gpucoder>
       </toolbox>
       <toolbox>
         <fixedpoint>
@@ -155,11 +148,6 @@
         <neuralnetwork>
           <enabled>true</enabled>
         </neuralnetwork>
-      </toolbox>
-      <toolbox>
-        <polyspacebugfinder>
-          <enabled>true</enabled>
-        </polyspacebugfinder>
       </toolbox>
     </matlab>
     <platform>

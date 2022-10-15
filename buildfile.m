@@ -2,10 +2,27 @@ function plan = buildfile
 
 plan = buildplan(localfunctions);
 
+plan("mex").Inputs = files(plan, "mex/**/*.c");
+plan("mex").Outputs = files(plan, "toolbox/**/*." + mexext);
+
+plan("pcode").Inputs = files(plan, "pcode/**/*.m");
+plan("pcode").Outputs = files(plan, "toolbox/**/*.p");
+
+plan("pcodeHelp").Inputs = plan("pcode").Inputs;
+%plan("pcodeHelp").Outputs = files(plan, "toolbox/**/*.m"]); % how to do this?
+
+plan("lint").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m"]);
+
+
 plan("test").Dependencies = ["mex", "pcode"];
-plan("toolbox").Dependencies = ["lint", "test", "doc"];
+
+plan("toolbox").Dependencies = ["lint", "test", "doc", "pcodeHelp"];
+plan("toolbox").Inputs = files(plan, "toolbox");
+plan("toolbox").Outputs = files(plan, "release/*.mltbx");
 
 plan("doc").Dependencies = "docTest";
+plan("doc").Inputs = files(plan, "toolbox/doc/**/*.mlx");
+plan("doc").Outputs = files(plan, "toolbox/doc/**/*.html");
 
 plan("install").Dependencies = "integTest";
 plan("integTest").Dependencies = "toolbox";
@@ -31,16 +48,32 @@ if ~isempty(issues.SuppressedIssues)
 end
 end
 
-function mexTask(~)
+function mexTask(context)
 % Compile mex files
 
-mex mex/convec.c -outdir toolbox/;
+outputPaths = replace(context.Inputs.paths,textBoundary + wildcardPattern + filesep, "toolbox" + filesep);
+
+for idx = 1:numel(context.Inputs.paths)
+    thisFile = context.Inputs.paths{idx};
+    disp("Building " + thisFile);
+    mex(thisFile,"-outdir", fileparts(outputPaths(idx)));
+end
 end
 
-function docTask(~)
+function docTask(~, options)
 % Generate the doc pages
-connector.internal.startConnectionProfile("loopbackHttps");
-com.mathworks.matlabserver.connector.api.Connector.ensureServiceOn();
+
+arguments
+    ~
+    options.Env (1,:) string = "standard"
+end
+
+if options.Env == "ci"
+    fprintf("Starting connector...");
+    connector.internal.startConnectionProfile("loopbackHttps");
+    com.mathworks.matlabserver.connector.api.Connector.ensureServiceOn();
+    disp("Done");
+end
 
 export("toolbox/doc/GettingStarted.mlx","toolbox/doc/GettingStarted.html");
 end
@@ -62,7 +95,7 @@ assertSuccess(results);
 end
 
 function lintTestsTask(~)
-% Find code issues in test code 
+% Find code issues in test code
 
 issues = codeIssues("tests");
 if ~isempty(issues.Issues)
@@ -79,28 +112,54 @@ function toolboxTask(~)
 % Create an mltbx toolbox package
 
 matlab.addons.toolbox.packageToolbox("Mass-Spring-Damper.prj","release/Mass-Spring-Damper.mltbx");
+
+end
+
+function pcodeHelpTask(context)
+% Extract help text for p-coded m-files
+
+outputPaths = "toolbox" + filesep + reverse(fileparts(reverse(context.Inputs.paths)));
+
+for idx = 1:numel(context.Inputs.paths)
+
+    % Grab the help text for the pcoded function to generate a help-only m-file
+    mfile = context.Inputs.paths{idx};
+
+    helpText = deblank(string(help(mfile)));
+    helpText = split(helpText,newline);
+    if helpText == ""
+        disp("No help text to extract for " + mfile);
+    else
+        disp("Extracting help for for " + mfile);
+        helpText = replaceBetween(helpText, 1, 1, "%"); % Add comment symbols
+
+        % Write the file
+        fid = fopen(outputPaths(idx),"w");
+        closer = onCleanup(@() fclose(fid));
+        fprintf(fid, "%s\n", helpText);
+    end
+end
 end
 
 function pcodeTask(context)
 % Obfuscate m-files
 
-% Grab the help text for the pcoded function to generate a help-only m-file
-mfile = "pcode/springMassDamperDesign.m";
-
-helpText = deblank(string(help(mfile)));
-helpText = split(helpText,newline);
-helpText = replaceBetween(helpText, 1, 1, "%"); % Add comment symbols
-
-% Write the file
-fid = fopen("toolbox/springMassDamperDesign.m","w");
-closer = onCleanup(@() fclose(fid));
-fprintf(fid, "%s\n", helpText);
-
-% Now pcode the file
-startDir = cd("toolbox/");
+startDir = pwd;
 cleaner = onCleanup(@() cd(startDir));
-pcode(fullfile(context.Plan.RootFolder,"pcode/springMassDamperDesign.m"));
+inputFolders = unique(fileparts(context.Inputs.paths));
+outputFolders = "toolbox" + filesep + reverse(fileparts(reverse(inputFolders)));
 
+for idx = 1:numel(inputFolders)
+    disp("P-coding files in " + inputFolders(idx));
+    % Now pcode the file
+    thisOutputFolder = fullfile(context.Plan.RootFolder, outputFolders(idx));
+    thisInputFolder = fullfile(context.Plan.RootFolder,inputFolders(idx));
+    if ~exist(thisOutputFolder,"dir")
+        mkdir(thisOutputFolder);
+    end
+    cd(thisOutputFolder);
+    pcode(thisInputFolder);
+end
 end
 
 function cleanTask(~)
@@ -110,33 +169,41 @@ derivedFiles = [...
     "toolbox/springMassDamperDesign.m"
     "toolbox/springMassDamperDesign.p"
     "toolbox/convec." + mexext
+    "toolbox/sub/convec2." + mexext
+    "toolbox/sub2/simulateSysem.m"
+    "toolbox/sub2/simulateSysem.p"
     "toolbox/doc/GettingStarted.html"
-    "release/Mass-Spring-Damper.mltbx"
     ];
 
 arrayfun(@deleteFile, derivedFiles);
 end
 
-function integTestTask(~)
+function integTestTask(~, options)
 % Run integration tests
-
-import matlab.addons.toolbox.installToolbox;
-import matlab.addons.toolbox.uninstallToolbox;
+arguments
+    ~
+    options.SandboxType (1,:) string = "full"
+end
 
 sourceFile = which("simulateSystem");
 
-% Remove source
-sourcePaths = cellstr(fullfile(pwd, ["toolbox", "toolbox" + filesep + "doc"]));
-origPath = rmpath(sourcePaths{:});
-pathCleaner = onCleanup(@() path(origPath));
+if options.SandboxType == "full"
 
-% Install Toolbox
-tbx = installToolbox("release/Mass-Spring-Damper.mltbx");
-tbxCleaner = onCleanup(@() uninstallToolbox(tbx));
+    % Remove source
+    sourcePaths = cellstr(fullfile(pwd, ["toolbox", "toolbox" + filesep + "doc"]));
+    origPath = rmpath(sourcePaths{:});
+    pathCleaner = onCleanup(@() path(origPath));
 
-assert(~strcmp(sourceFile,which("simulateSystem")), ...
-    "Did not setup integ environment toolbox correctly");
+    % Install Toolbox
 
+    tbx = matlab.addons.toolbox.installToolbox("release/Mass-Spring-Damper.mltbx");
+    tbxCleaner = onCleanup(@() matlab.addons.toolbox.uninstallToolbox(tbx));
+
+    assert(~strcmp(sourceFile,which("simulateSystem")), ...
+        "Did not setup integ environment toolbox correctly");
+else
+    disp("Falling back to unit tests without full environment")
+end
 results = runtests("tests","IncludeSubfolders",true);
 disp(results);
 assertSuccess(results);
