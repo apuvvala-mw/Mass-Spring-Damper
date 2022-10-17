@@ -1,33 +1,34 @@
 %% 
 % My people! Oh how I have missed you. It has been such a long time since
-% we have talked about some developer workflow goodness here on the blog.
-% The silver lining here is that while I have found it hard to sit down and
-% write up some thoughts and musings a big reason for that is we have been
-% hard at work delivering development infrastructure for MATLAB. 
+% we have talked about some developer workflow goodness here on the blog. I
+% have found it hard to sit down and write up more thoughts and musings on
+% these topics, but the silver lining here is a big reason for my lack of
+% time is that we have been hard at work delivering development
+% infrastructure for MATLAB.
 %
-% One of those things is the new build tool for MATLAB that is now part of
-% R2022b! We are super excited for this, it's rookie release, but even more
-% excited for all the value that will come of it as you begin using it for
-% your MATLAB projects and in subsequent releases as we continue to enhance
-% it.
+% One of those things is the new build tool for MATLAB that included in
+% R2022b! We are super excited about this tool's rookie release, but
+% even more excited for all the value that will come of it as you begin
+% using it for your MATLAB projects. 
 %
 % What is this thing anyway? Well in short it is a standard interface for
 % you to build and collaborate on your MATLAB projects. "Build?", you say?
 %
 % Yes, "Build!", I say. Anyone developing serious, shareable, production
-% grade MATLAB code knows that even this easy to leverage language that
-% typically doesn't require an actual "compile" step still needs a
-% development process that includes things like testing, other quality
-% gates, and bumping a release. Also it turns out that there are many ways
-% in which MATLAB does indeed _*build*_ something. Think mex files, p-code,
-% code generation, toolbox packages, doc pages, or producing artifacts from
-% MATLAB Compiler and Compiler SDK. These are all build steps.
+% grade MATLAB code knows that even though MATLAB is an "easy-to-leverage"
+% language that typically doesn't require an actual "compile" step, it
+% still requires a development process that includes tasks like testing,
+% quality gates, and bumping a release number. Also it turns out that there
+% are many ways in which MATLAB does indeed _*build*_ something. Think mex
+% files, p-code, code generation, toolbox packages, doc pages, or producing
+% artifacts from MATLAB Compiler and Compiler SDK. These are all build
+% steps.
 %
-% The issue though, has been that there was no standard API for MATLAB
+% The issue though, has been that there has been no standard API for MATLAB
 % projects to organize these build steps. It usually ends up looking
 % something like this:
 %
-% <<y2022AdHocScripts.png>>
+% <<y2022JustAdHocScripts.png>>
 % 
 % Does this look familiar? It does to me. All of these scripts grow in a
 % project or repo for doing these specific tasks. Each one looks a little
@@ -37,19 +38,21 @@
 % back to our code and haven't the foggiest idea how we built it, in what
 % order, and with which scripts. 
 %
-% Also, know who is never so lucky? A new contributor. Someone who wants to
-% contribute to your code and hasn't learned the system you have put in
-% place to develop the project. We see that some of the best projects do
-% indeed have their own build framework put in place. This is great for
-% them, but even in these cases a new developer on the project needs to
-% learn this custom system, which is different than all the other systems
-% to build MATLAB code. 
+% Also, know who is _never_ so lucky? A new contributor. Someone who wants
+% to contribute to your code and hasn't learned the system you have put in
+% place to develop the project. Some projects are rigorous and do indeed
+% have their own custom-authored build framework put in place. This is
+% great for them, but requires more maintenance, and even in these cases a
+% new developer on the project needs to learn this custom system, which is
+% different than all the other systems to build MATLAB code.
 %
-% Well, not anymore. Starting in R2022b we now have a standard interface
-% and build framework that enables project owners to easily produce their
-% build in a way that anyone else can consume, no matter how complicated
-% the build pipeline is. We need to go from the ad-hoc scripts and custom
-% build system to a known, structured, and standard framework.
+% Well, not anymore. Starting in
+% <https://www.mathworks.com/help/matlab/build-automation.html?s_tid=CRUX_lftnav
+% R2022b we now have a standard interface and build framework> that enables
+% project owners to easily produce their build in a way that anyone else
+% can consume, no matter how complicated the build pipeline is. We now can
+% move from ad-hoc scripts and custom build systems to a known, structured,
+% and standard framework.
 %
 % <<y2022AdHoc2BuildTool.png>>
 %
@@ -107,9 +110,10 @@ addpath .changes/round1
 plot(y,t)
 
 %% 
-% ...and submit. and then experience a world of pain as the
-% author declines my submission because this design fails a test already
-% put in place intended to limit the overshoot of the response. See?
+% ...and submit. This is when I get a dose of humility and experience a
+% world of pain. The toolbox maintainer declines my submission because this
+% design fails a test already put in place intended to limit the overshoot
+% of the response. See?
 runtests("tests/designTest.m")
 
 %%
@@ -119,9 +123,9 @@ runtests("tests/designTest.m")
 % might seem obvious, but for a "real" toolbox this can be hard to see.
 % 
 % Alright clearly there is more work to do after my contribution was
-% declined tersely by an overworked toolbox author. I am still ready to go.
-% After learning that there is an overshoot requirement I can tweak my
-% design to fit within these constraints:
+% declined tersely by an overworked toolbox author. But I am still up to
+% the task. After learning that there is an overshoot requirement I can
+% tweak my design to fit within these constraints:
 addpath .changes/round2
 
 %%
@@ -142,15 +146,15 @@ runtests("tests")
 
 %% 
 % Alright, at this point I see that there is some utility that I wasn't
-% changing, using, or even familiar with and it is failing. Furthermore, I
-% realize that it is failing because it isn't built. I have no idea how to
-% build this mex file, and at this point I give up because I hadn't planned
-% to invest this much time into this contribution. I don't have time to
-% learn all the details of this repo (I just wanted to tweak the damping
-% coefficient!). After giving up I leave with a bad taste in my mouth. I am
-% probably done trying to contribute to this code base, and actually may
-% even think twice before trying to contribute to another code base. Not
-% good. No buena. Nicht gut.
+% changing, using, or even familiar with and it's test is failing.
+% Furthermore, I realize that it is failing because it isn't compiled. I
+% have no idea how to compile this mex file, and at this point I give up
+% because I hadn't planned to invest this much time into this contribution.
+% I don't have time to learn all the details of this repo (I just wanted to
+% tweak the damping coefficient!). After giving up I leave with a bad taste
+% in my mouth. I am probably done trying to contribute to this code base,
+% and actually may even think twice before trying to contribute to some
+% other code base. Not good. No buena. Nicht gut.
 
 %%
 % *Enter buildtool* 
@@ -173,6 +177,10 @@ buildtool
 % then we can confirm it doesn't fail the tests. *It makes baking in high
 % quality easy(er).*
 %
+%%
+%
+% *How's it done?* 
+%
 % I have been focusing on the perspective of the unfamiliar contributor.
 % How can the author/owner use this to set up for success? Well this is
 % super simple and leverages an easy to work with scriptable MATLAB
@@ -184,8 +192,8 @@ buildtool
 % Passing all of the local functions when you create your build plan makes
 % it easy to define simple tasks. This enables you to create tasks from any
 % function that ends in the word *|Task|* (or *|task|* or *|_task|* or
-% *|tAsK|*, etc). The "H1 line" or the first line of text in the function
-% gives a task description. For this case we have 3 tasks we'd like to add.
+% *|tAsK|*, etc). The first comment in the function (the H1 line) gives a
+% task description. For this case we have 3 tasks we'd like to add.
 %
 %%
 % *A setup task*
@@ -194,15 +202,16 @@ buildtool
 %
 % This task ensures that the right paths are in place for the build. You
 % might ask whether this should be done using a MATLAB Project, and the
-% answer is absolutely that is a better way! For now we are building this
+% answer is yes absolutely! That is a better way. For now we are building this
 % in but will projectify it in a later post.
 %
 % *A mex task*
 %
 % <include>.hidden/buildfileSnippet3.m</include>
 %
-% This is a pretty simple compile, but it is usually more involved. Here is
-% where you can make it easy for the newcomer.
+% This is a pretty simple compile in this example, but for many projects
+% this step can be more involved. Simple or complex, here is where you
+% can make it trivial for the newcomer.
 %
 % *A test task*
 %
@@ -213,15 +222,15 @@ buildtool
 buildtool -tasks
 
 %% 
-% However, as you can imagine these tasks can't be run in just any order.
-% The tests won't pass unless the proper code is on the path and the mex
-% file is built. These relationships can be defined in the main function as
-% you setup your plan. We need to add these dependencies, and while we are
-% at it, let's setup a default task so that *|buildtool|* will work without
-% even passing any arguments.
+% Great, we can see our 3 tasks, but as you might predict that these tasks
+% can't be run in just any order. The tests won't pass unless the proper
+% code is on the path and the mex file is built. These task dependency
+% relationships can be defined in the main function as you setup your plan.
+% We need to add these dependencies, and while we are at it, let's setup a
+% default task so that
+% *|buildtool|* will work without even passing any arguments.
 %
 % <include>.hidden/buildfileSnippet5.m</include>
-%
 %
 % Now we can invoke it by default by just calling *|buildtool|* (as we did
 % above) or we can invoke a specific task we'd like to run such as mex and
@@ -235,11 +244,8 @@ buildtool mex
 %
 % Alright with that I am going or send you off to begin your MATLAB project
 % development adventures with the new build tool. We'd love to hear your
-% feedback. This is only the beginning! First, I am going to blog a few
-% more times on this so you can see this project grow in capabilities and
-% really start to leverage this build framework. Second, we are working
-% like crazy on future capabilities for this tool. So this is just the
+% feedback. Let's make this a series! I am going to blog a few more times
+% on this so you can see this project grow in capabilities and really start
+% to leverage this build framework. Also, we are working like crazy on
+% future capabilities for this tool. So on multiple fronts this is just the
 % beginning of much more to come.
-
-
-
