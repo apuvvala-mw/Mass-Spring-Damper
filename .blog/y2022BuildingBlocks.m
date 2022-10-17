@@ -1,5 +1,4 @@
-%% If you build it, they will come
-% 
+%% 
 % My people! Oh how I have missed you. It has been such a long time since
 % we have talked about some developer workflow goodness here on the blog.
 % The silver lining here is that while I have found it hard to sit down and
@@ -31,12 +30,12 @@
 % <<y2022AdHocScripts.png>>
 % 
 % Does this look familiar? It does to me. All of these scripts grow in a
-% project or repo for doing these specific tasks. Each one looks  alittle
+% project or repo for doing these specific tasks. Each one looks a little
 % different because one was written on Tuesday and the other the following
 % Monday. If we are lucky, we remember how these all work when we need to
 % interact with them. However, sometimes we are not lucky. Sometimes we go
-% back to our code and haven't the foggiest idea how we built it, i what
-% order and with which scripts. 
+% back to our code and haven't the foggiest idea how we built it, in what
+% order, and with which scripts. 
 %
 % Also, know who is never so lucky? A new contributor. Someone who wants to
 % contribute to your code and hasn't learned the system you have put in
@@ -108,21 +107,21 @@ addpath .changes/round1
 plot(y,t)
 
 %% 
-% ...AAAAANNNNNNNNDDDDD submit. and then experience a world of pain as the
+% ...and submit. and then experience a world of pain as the
 % author declines my submission because this design fails a test already
 % put in place intended to limit the overshoot of the response. See?
 runtests("tests/designTest.m")
 
-% In retrospect this is easy to see, there were tests after all. I should
-% have run them before submitting. But there was nothing pointing me in
-% their direction and I jsut missed it. For a simple example repo that
+%%
+% In retrospect this is easy to predict, there were tests after all. I
+% should have run them before submitting. But there was nothing pointing me
+% in their direction and I just missed it. For a simple example repo that
 % might seem obvious, but for a "real" toolbox this can be hard to see.
-%
-%% 
+% 
 % Alright clearly there is more work to do after my contribution was
 % declined tersely by an overworked toolbox author. I am still ready to go.
 % After learning that there is an overshoot requirement I can tweak my
-% design to fit within these contraints:
+% design to fit within these constraints:
 addpath .changes/round2
 
 %%
@@ -138,20 +137,20 @@ runtests("tests/designTest.m")
 %% 
 % Yes! Finally I must be done. However, when I submit this code I get
 % another rejection because there is still a test failing for the mex file
-% utility that I didnt even know about:
+% utility that I didn't even know about:
 runtests("tests")
 
 %% 
 % Alright, at this point I see that there is some utility that I wasn't
 % changing, using, or even familiar with and it is failing. Furthermore, I
 % realize that it is failing because it isn't built. I have no idea how to
-% build this mex file utility, and at this point I give up because I hadn't
-% planned to invest this much time into this contribution. I don't have
-% time to learn all the details of this repo (I just wanted to tweak the
-% damping coefficient!). After giving up I leave with a bad taste in my
-% mouth. I am probably done trying to contribute to this code base, and
-% actually may even think twice before trying to contribute to another code
-% base. Not good. No buena. Nicht gut.
+% build this mex file, and at this point I give up because I hadn't planned
+% to invest this much time into this contribution. I don't have time to
+% learn all the details of this repo (I just wanted to tweak the damping
+% coefficient!). After giving up I leave with a bad taste in my mouth. I am
+% probably done trying to contribute to this code base, and actually may
+% even think twice before trying to contribute to another code base. Not
+% good. No buena. Nicht gut.
 
 %%
 % *Enter buildtool* 
@@ -166,13 +165,81 @@ runtests("tests")
 % intended, including things like running tests and compiling mex files, by
 % simply invoking the tool. Let's try it:
 buildtool
+
+%%
+% Isn't that beautiful? I didn't have to know anything about how the project
+% is built and I could get rolling quickly. I can make my small change,
+% everything that needs to happen (e.g. building a mex file) happens and
+% then we can confirm it doesn't fail the tests. *It makes baking in high
+% quality easy(er).*
 %
+% I have been focusing on the perspective of the unfamiliar contributor.
+% How can the author/owner use this to set up for success? Well this is
+% super simple and leverages an easy to work with scriptable MATLAB
+% interface as the fundamental framework. You start by creating your
+% *|buildfile.m|*, which is a function that creates your build plan.
+%
+% <include>.hidden/buildfileSnippet1.m</include>
+%
+% Passing all of the local functions when you create your build plan makes
+% it easy to define simple tasks. This enables you to create tasks from any
+% function that ends in the word *|Task|* (or *|task|* or *|_task|* or
+% *|tAsK|*, etc). The "H1 line" or the first line of text in the function
+% gives a task description. For this case we have 3 tasks we'd like to add.
+%
+%%
+% *A setup task*
+%
+% <include>.hidden/buildfileSnippet2.m</include>
+%
+% This task ensures that the right paths are in place for the build. You
+% might ask whether this should be done using a MATLAB Project, and the
+% answer is absolutely that is a better way! For now we are building this
+% in but will projectify it in a later post.
+%
+% *A mex task*
+%
+% <include>.hidden/buildfileSnippet3.m</include>
+%
+% This is a pretty simple compile, but it is usually more involved. Here is
+% where you can make it easy for the newcomer.
+%
+% *A test task*
+%
+% <include>.hidden/buildfileSnippet4.m</include>
+%
+% Straightforward. Now that those tasks are defined and automatically
+% included in your build file anyone can see what tasks can be run:
+buildtool -tasks
 
+%% 
+% However, as you can imagine these tasks can't be run in just any order.
+% The tests won't pass unless the proper code is on the path and the mex
+% file is built. These relationships can be defined in the main function as
+% you setup your plan. We need to add these dependencies, and while we are
+% at it, let's setup a default task so that *|buildtool|* will work without
+% even passing any arguments.
+%
+% <include>.hidden/buildfileSnippet5.m</include>
+%
+%
+% Now we can invoke it by default by just calling *|buildtool|* (as we did
+% above) or we can invoke a specific task we'd like to run such as mex and
+% it will just run what is required for that task:
+buildtool mex
 
-
-
-
-
+%% 
+% Here is the full buildfile for your reference:
+%
+% <include>buildfile.m</include>
+%
+% Alright with that I am going or send you off to begin your MATLAB project
+% development adventures with the new build tool. We'd love to hear your
+% feedback. This is only the beginning! First, I am going to blog a few
+% more times on this so you can see this project grow in capabilities and
+% really start to leverage this build framework. Second, we are working
+% like crazy on future capabilities for this tool. So this is just the
+% beginning of much more to come.
 
 
 
