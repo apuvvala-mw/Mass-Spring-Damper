@@ -8,8 +8,9 @@ plan.DefaultTasks = "test";
 end
 
 function setupTask(context)
-% Setup path for the build
+% Setup paths for the build
 addpath(fullfile(context.Plan.RootFolder,"toolbox"));
+addpath(fullfile(context.Plan.RootFolder,"toolbox","doc"));
 end
 
 function mexTask(~)

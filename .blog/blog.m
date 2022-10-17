@@ -165,7 +165,6 @@ runtests("tests")
 % *|buildfile.m|* I know I am in business and I can do anything the author
 % intended, including things like running tests and compiling mex files, by
 % simply invoking the tool. Let's try it:
-pwd
 buildtool
 %
 
