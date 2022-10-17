@@ -10,7 +10,8 @@ function testSettlingTime(testCase)
 positionAfterSettling = position(time > 2);
 
 
-verifyEqual(testCase, positionAfterSettling, repmat(0,size(positionAfterSettling)), 'AbsTol', .001);
+verifyEqual(testCase, positionAfterSettling, repmat(0,size(positionAfterSettling)), 'AbsTol', .001,...
+    "Settling time violation. MAximum settling time is 2 seconds.");
 end
 
 function testOvershoot(testCase)
@@ -19,7 +20,7 @@ function testOvershoot(testCase)
 [position, ~] = simulateSystem(springMassDamperDesign);
 overshoot = max(position);
 
-verifyLessThan(testCase, overshoot, 0.01);
+verifyLessThan(testCase, overshoot, 0.01, "Overshoot violation! Maximum overshoot is 0.01");
 end
 
 function testInvalidInput(testCase)
