@@ -10,7 +10,6 @@ end
 c = design.c;
 k = design.k;
 
-
 % Constant variables
 z0 = [-0.1; 0];  % Initial Position and Velocity
 m = 1500;        % Mass

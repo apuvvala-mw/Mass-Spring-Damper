@@ -202,19 +202,13 @@ else
     cleanRecords.Properties.Source = string.empty;
 end
 
-arrayfun(@deleteFile, cleanRecords.files);
-
-
-oldWarn = warning("off",'MATLAB:RMDIR:RemovedFromPath');
-cl = onCleanup(@() warning(oldWarn));
-arrayfun(@rmdir, cleanRecords.folders);
-clear cl;
-
-deleteFile(cleanRecords.Properties.Source);
-
+deleteFiles(cleanRecords.files);
 
 v = extract(string(version), textBoundary + digitsPattern + "." + digitsPattern + "." + digitsPattern + "." + digitsPattern);
-rmdir(fullfile(".buildtool",v), "s");
+deleteFolders([cleanRecords.folders;fullfile(".buildtool",v)]); 
+
+deleteFiles(cleanRecords.Properties.Source); % delete the clean registry as well
+
 end
 
 function registerForClean(files,options)
@@ -282,9 +276,34 @@ matlab.addons.toolbox.installToolbox("release/Mass-Spring-Damper.mltbx");
 end
 
 
-function deleteFile(file)
-if ~isempty(file) && exist(file,"file")
-    delete(file);
+function deleteFiles(files)
+
+arguments
+    files string
+end
+
+for file = files(:).'
+    if ~isempty(file) && exist(file,"file")
+        disp("Deleting file: " + file);
+        delete(file);
+    end
+end
+end
+
+function deleteFolders(folders)
+
+arguments
+    folders string;
+end
+
+oldWarn = warning("off",'MATLAB:RMDIR:RemovedFromPath');
+cl = onCleanup(@() warning(oldWarn));
+
+for folder = folders(:).'
+    if exist(folder,"dir")
+        disp("Deleting folder: " + folder);
+        rmdir(folder, "s");
+    end
 end
 end
 
