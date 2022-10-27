@@ -2,6 +2,7 @@ function plan = buildfile
 
 plan = buildplan(localfunctions);
 
+[plan(["test", "docTest"]).Dependencies] = deal("load");
 plan("mex").Inputs = files(plan, "mex/**/*.c");
 plan("mex").Outputs = files(plan, "toolbox/**/*." + mexext);
 
@@ -9,12 +10,11 @@ plan("pcode").Inputs = files(plan, "pcode/**/*.m");
 plan("pcode").Outputs = files(plan, "toolbox/**/*.p");
 plan("pcode").Dependencies = "pcodeHelp";
 plan("pcodeHelp").Inputs = plan("pcode").Inputs;
-%plan("pcodeHelp").Outputs = files(plan, "toolbox/**/*.m"]); % how to do this?
+plan("pcodeHelp").Outputs = files(plan, plan("pcodeHelp").Inputs.paths.replace("pcode/", "toolbox/"));
 
 plan("lint").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m"]); % Want to use this for finding files to operate on but dont want incremental
 
-plan("test").Dependencies = ["mex", "pcode"];
-plan("test").Inputs = files(plan, ["toolbox/**/*.m", "pcode/**/*.m", "tests"]);
+plan("test").Inputs = [plan("mex").Outputs, plan("pcode").Outputs];
 
 plan("toolbox").Dependencies = ["lint", "test", "doc", "pcodeHelp"];
 plan("toolbox").Inputs = files(plan, ["pcode", "mex", "toolbox"]);
@@ -43,6 +43,9 @@ lintFcn(fileparts(context.Inputs.paths));
 
 end
 
+function loadTask(ctx)
+matlab.project.loadProject(ctx.Plan.RootFolder);
+end
 
 function mexTask(context)
 % Compile mex files
@@ -61,7 +64,7 @@ for idx = 1:numel(srcFiles)
     disp("Building " + thisInput);
 
     mex(thisInput,"-output", thisOutput);
-    registerForClean(thisOutput);
+   % registerForClean(thisOutput);
     disp(" ")
 end
 end
@@ -86,7 +89,7 @@ for idx = 1:numel(docFiles)
     [thisPath, thisFile] = fileparts(docFiles(idx));
     exportedFile = fullfile(thisPath, thisFile + ".html");
     export(docFiles(idx), exportedFile);
-    registerForClean(exportedFile);
+    %registerForClean(exportedFile);
 end
 end
 
@@ -115,7 +118,7 @@ function toolboxTask(~)
 % Create an mltbx toolbox package
 
 matlab.addons.toolbox.packageToolbox("Mass-Spring-Damper.prj","release/Mass-Spring-Damper.mltbx");
-registerForClean("release/Mass-Spring-Damper.mltbx");
+%registerForClean("release/Mass-Spring-Damper.mltbx");
 
 end
 
@@ -144,7 +147,7 @@ for idx = 1:numel(context.Inputs.paths)
         fid = fopen(outputPaths(idx),"w");
         closer = onCleanup(@() fclose(fid));
         fprintf(fid, "%s\n", helpText);
-        registerForClean(outputPaths(idx));
+        %registerForClean(outputPaths(idx));
     end
 end
 end
@@ -170,7 +173,7 @@ for idx = 1:numel(unique(srcFolders))
     cd(thisOutFolder);
     pcode(thisSrcFolder);
     pcodedFiles = outFiles(outFiles.startsWith(outFolders(idx)));
-    registerForClean(pcodedFiles, BuildRoot=context.Plan.RootFolder);
+   % registerForClean(pcodedFiles, BuildRoot=context.Plan.RootFolder);
 end
 end
 
@@ -185,33 +188,34 @@ end
 
 createdFolder = folder;
 while(~exist(createdFolder,"dir") || isempty(createdFolder))
-    registerForClean(folder,Folder=true,BuildRoot=options.BuildRoot);
+    %registerForClean(folder,Folder=true,BuildRoot=options.BuildRoot);
     createdFolder = fileparts(createdFolder);
 end
 mkdir(folder);
 end
 
-function cleanTask(~)
+function cleanTask(ctx, task)
 % Clean all derived artifacts
 
-if exist("derived/clean.mat","file")
-    cleanRecords = matfile("derived/clean.mat");
-else
-    cleanRecords.files = string.empty;
-    cleanRecords.folders = string.empty;
-    cleanRecords.Properties.Source = string.empty;
+arguments
+    ctx
+    task (1,:) string = missing;
 end
 
-deleteFiles(cleanRecords.files);
+if ismissing(task)
+    outputs = [ctx.Plan.Tasks.Outputs];
+else
+    outputs = [ctx.Plan(task).Outputs];
+end
 
+deleteFiles(outputs.paths);
 v = extract(string(version), textBoundary + digitsPattern + "." + digitsPattern + "." + digitsPattern + "." + digitsPattern);
-deleteFolders([cleanRecords.folders;fullfile(".buildtool",v)]); 
-
-deleteFiles(cleanRecords.Properties.Source); % delete the clean registry as well
-
+deleteFolders(fullfile(".buildtool",v)); 
 end
 
 function registerForClean(files,options)
+% Keeping this around because the cleaner clean doesn't yet handle folders
+% the way this approach does. Maybe there is something in the middle.
 arguments
     files string;
     options.BuildRoot (1,1) string = "";
