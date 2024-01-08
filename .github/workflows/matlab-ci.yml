@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v2
       
       - name: Start display server
-        if: matrix.platform == 'ubuntu-latest' 
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
         run: |
           sudo apt-get install xvfb
           Xvfb :99 &
