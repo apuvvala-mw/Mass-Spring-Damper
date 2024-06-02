@@ -1,7 +1,7 @@
 function plan = buildfile
 import matlab.buildtool.tasks.*
-import matlabtest.plugins.codecoverage.StandaloneReport
-import matlab.unittest.plugins.codecoverage.CoberturaFormat
+% import matlabtest.plugins.codecoverage.StandaloneReport
+% import matlab.unittest.plugins.codecoverage.CoberturaFormat
 
 plan = buildplan(localfunctions);
 
@@ -9,7 +9,8 @@ plan("clean") = CleanTask;
 
 plan("check") = CodeIssuesTask;
 
-plan("test") = TestTask(SourceFiles="toolbox").addCodeCoverage([StandaloneReport("mystandalonereport.html") CoberturaFormat("cov.xml")]);
+% plan("test") = TestTask(SourceFiles="toolbox").addCodeCoverage([StandaloneReport("mystandalonereport.html") CoberturaFormat("cov.xml")]);
+plan("test") = TestTask;
 
 plan("test").Dependencies = ["setup" "mex" "pcode"];
 
