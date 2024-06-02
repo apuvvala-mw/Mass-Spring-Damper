@@ -3,76 +3,62 @@
 name: MATLAB Build
 
 # Controls when the action will run. 
-on: 
-  push:                       # Runs on push events
-  pull_request:               # Runs on pull requests
-  workflow_dispatch:          # Allows you to run this workflow manually from the Actions tab
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   # This workflow contains a single job called "build"
   build:
-    strategy:
-      matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-        release: [R2022b, latest]
-        
     # The type of runner that the job will run on
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       
-      - name: Start display server
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
-        run: |
-          sudo apt-get install xvfb
-          Xvfb :99 &
-          echo "DISPLAY=:99" >> $GITHUB_ENV
-
-      # Sets up MATLAB on the GitHub Actions runner
-      - name: Setup MATLAB
-        uses: matlab-actions/setup-matlab@v2-beta
+      # Sets up MATLAB on a GitHub-hosted runner
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
         with:
-          release: ${{ matrix.release }}
+            release: R2024a
 
       # Runs a set of commands using the runners shell
-      - name: Run toolbox build
-        uses: matlab-actions/run-build@v1
+      #- name: Run all tests
+      #  uses: matlab-actions/run-tests@v2
+      #  with:
+      #    source-folder: code
+
+      - name: Cache buildtool artifacts
+        id: buildtool-cache
+        uses: actions/cache@v4
+        with:
+            path: |
+                .buildtool
+                results
+            key: ${{ runner.os }}-buildtool-cache-${{ github.ref }}
+
+      # Run MATLAB build
+      - name: Run the default "test" task in the build file
+        uses: matlab-actions/run-build@v2
+
+      #- name: List contents of .buildtool
+      #  run: ls -la .buildtool/**/*
+      
+      #- name: Lookup test task trace
+      #  uses: matlab-actions/run-command@v2
+      #  with:
+      #    command: lookUpTestTaskTrace
         
-      # Runs a set of commands using the runners shell
-      - name: Run all tests
-        uses: matlab-actions/run-tests@v1
-        with:
-          source-folder: .
-          test-results-pdf: artifacts/report/test-report.pdf
-          test-results-junit: artifacts/results/test-results.xml
-          code-coverage-cobertura: artifacts/coverage/coverage.xml
-
-          
-      - name: Upload Test Report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
-        with:
-          # Artifact name
-          name: Test Report
-          # A file, directory or wildcard pattern that describes what to upload
-          path: artifacts/report/test-report.pdf
-          
-      - name: Upload Test Results
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v3
-        with:
-          # Artifact name
-          name: Test Report
-          # A file, directory or wildcard pattern that describes what to upload
-          path: artifacts/results/test-results.xml
-          
-      - name: Upload Test Coverage
-        uses: actions/upload-artifact@v3
-        with:
-          # Artifact name
-          name: Test Coverage
-          # A file, directory or wildcard pattern that describes what to upload
-          path: artifacts/coverage/coverage.xml
+      # You can use "run-command" to execute custom MATLAB scripts, functions, or statements
+      #- name: Run custom testing procedure
+      #  uses: matlab-actions/run-command@v2
+      #  with:
+      #    command: disp('Running my custom testing procedure!'); addpath('code'); results = runtests('IncludeSubfolders', true); assertSuccess(results);
