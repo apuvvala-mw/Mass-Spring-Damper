@@ -16,7 +16,7 @@ plan("test").Dependencies = ["setup" "mex" "pcode"];
 
 % plan("mex") = MexTask.forEachFile("mex\*.c", "toolbox");
 
-plan("mex") = MexTask("mex\convec.c", "toolbox");
+plan("mex") = MexTask("mex/convec.c", "toolbox");
 
 plan("pcode") = PcodeTask("pcode", "toolbox");
 
