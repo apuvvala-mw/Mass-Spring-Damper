@@ -10,7 +10,8 @@ plan("clean") = CleanTask;
 plan("check") = CodeIssuesTask;
 
 % plan("test") = TestTask(SourceFiles="toolbox").addCodeCoverage([StandaloneReport("mystandalonereport.html") CoberturaFormat("cov.xml")]);
-plan("test") = TestTask;
+% plan("test") = TestTask();
+plan("test") = TestTask(SourceFiles="toolbox");
 
 plan("test").Dependencies = ["setup" "mex" "pcode"];
 

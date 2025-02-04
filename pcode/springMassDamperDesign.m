@@ -12,4 +12,4 @@ end
 
 design.k = 5e6;                  % Spring Constant
 design.c = 5e5;
-%design.c = 2*m*sqrt(design.k/m); % Damping Coefficient to be critically damped
+% design.c = 2*m*sqrt(design.k/m); % Damping Coefficient to be critically damped
